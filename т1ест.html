@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>THE RICE CLAN | TRC SYSTEM</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Exo+2:wght@300;600&display=swap');
+        
+        :root {
+            --gold: #f1c40f; --rice: #f7f1e3; --dark: #1e272e;
+            --gray: #485460; --red: #ff3f34; --bg: #050505; --blue: #00d2ff;
+        }
+
+        body {
+            font-family: 'Exo 2', sans-serif; background: var(--bg); color: var(--rice);
+            margin: 0; min-height: 100vh;
+            background: radial-gradient(circle at top, #2c3e50, #050505);
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        #authScreen { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(15px); }
+        .auth-card { background: rgba(255,255,255,0.03); padding: 40px; border-radius: 20px; border: 1px solid var(--gold); text-align: center; box-shadow: 0 0 30px rgba(241, 196, 15, 0.1); }
+
+        nav { background: rgba(0,0,0,0.9); padding: 15px; border-bottom: 2px solid var(--gold); display: flex; justify-content: center; gap: 10px; position: sticky; top: 0; z-index: 100; flex-wrap: wrap; }
+        .nav-btn { background: none; border: 1px solid transparent; color: #aaa; font-family: 'Orbitron', sans-serif; cursor: pointer; font-size: 11px; transition: 0.3s; padding: 8px 15px; border-radius: 5px; }
+        .nav-btn:hover, .nav-btn.active-btn { color: var(--gold); border-color: var(--gold); background: rgba(241, 196, 15, 0.05); }
+
+        .container { width: 95%; max-width: 900px; margin: 30px auto; display: none; }
+        .active { display: block; }
+
+        .card { background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; position: relative; }
+        h1, h2, h3 { font-family: 'Orbitron', sans-serif; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; }
+
+        .role-badge { font-size: 10px; padding: 3px 8px; border-radius: 4px; background: var(--gray); color: #fff; margin-top: 5px; display: inline-block; font-weight: bold; }
+        
+        input, select { background: #111; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin: 8px 0; }
+        button { background: var(--gold); color: #000; padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: 'Orbitron', sans-serif; transition: 0.3s; }
+        button:hover { filter: brightness(1.2); transform: translateY(-2px); }
+
+        .avatar { width: 100px; height: 100px; border-radius: 20px; border: 2px solid var(--gold); background: #111; margin-bottom: 10px; }
+        .staff-card { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 5px solid var(--gold); }
+        
+        .stars { color: var(--gold); cursor: pointer; font-size: 18px; background: rgba(241,196,15,0.1); padding: 5px 10px; border-radius: 5px; transition: 0.2s; }
+        .stars:hover { background: rgba(241,196,15,0.3); }
+        .rating-val { font-weight: bold; color: var(--rice); margin-left: 10px; font-family: 'Orbitron'; }
+
+        .inv-item { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 8px; border-left: 4px solid var(--blue); }
+
+        #logBox { background: #000; color: #aaa; font-family: monospace; height: 120px; overflow-y: scroll; padding: 10px; border-radius: 8px; font-size: 11px; margin-top: 10px; border: 1px solid #222; text-align: left; }
+    </style>
+</head>
+<body>
+
+<div id="authScreen">
+    <div class="auth-card fade-in">
+        <h1 style="color: var(--rice)">THE RICE CLAN</h1>
+        <p style="color: var(--gold); font-size: 12px; margin-top: -15px; letter-spacing: 3px;">CENTRAL SYSTEM</p>
+        <input type="text" id="logNick" placeholder="Ник в Discord">
+        <input type="password" id="logPass" placeholder="Пароль">
+        <button onclick="auth()" style="width: 100%;">ENTER SYSTEM</button>
+    </div>
+</div>
+
+<nav>
+    <button class="nav-btn" onclick="showTab('profile')">PROFILE</button>
+    <button class="nav-btn" onclick="showTab('shop')">MARKET</button>
+    <button class="nav-btn" onclick="showTab('rating')">LEADERS</button>
+    <button class="nav-btn" onclick="showTab('staff')">STAFF RATING</button>
+    <button id="admLink" class="nav-btn" style="display:none; color:var(--red)" onclick="showTab('admin')">ADMIN</button>
+    <button class="nav-btn" style="color: var(--red)" onclick="logout()">EXIT</button>
+</nav>
+
+<div id="profile" class="container active">
+    <div class="card fade-in" style="text-align: center;">
+        <img id="uAvatar" src="" class="avatar">
+        <h2 id="uName">---</h2>
+        <div id="uRole" class="role-badge">УЧАСТНИК</div>
+        <div style="font-size: 40px; font-weight: bold; margin: 15px 0;"><span id="uBal">0</span> <span style="font-size: 14px; color: var(--gold)">TRC</span></div>
+        <h3 style="text-align: left; font-size: 14px; border-bottom: 1px solid #333;">🎒 INVENTORY</h3>
+        <div id="uInv"></div>
+    </div>
+</div>
+
+<div id="shop" class="container">
+    <div class="card fade-in">
+        <h2 id="shStatus">MARKET CLOSED</h2>
+        <div id="shGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px;"></div>
+    </div>
+</div>
+
+<div id="rating" class="container">
+    <div class="card fade-in">
+        <h2>🏆 TOP MEMBERS</h2>
+        <div id="topList"></div>
+    </div>
+</div>
+
+<div id="staff" class="container">
+    <div class="card fade-in">
+        <h2>📊 STAFF EFFICIENCY</h2>
+        <p style="font-size: 12px; color: #888; margin-bottom: 20px;">Оценивайте работу администрации по 5-бальной шкале</p>
+        <div id="staffList"></div>
+    </div>
+</div>
+
+<div id="admin" class="container">
+    <div class="card fade-in" style="border-color: var(--red);">
+        <h2>👑 COMMAND CENTER</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+            <div>
+                <h3>USERS & ROLES</h3>
+                <input type="text" id="admTo" placeholder="Ник игрока">
+                <input type="number" id="admVal" placeholder="Сумма TRC">
+                <select id="admRole">
+                    <option value="Участник">Участник</option>
+                    <option value="Тренер">Тренер</option>
+                    <option value="Аналитик">Аналитик</option>
+                    <option value="Секретарь">Секретарь</option>
+                    <option value="Хелпер">Хелпер</option>
+                    <option value="Зам. Вождя">Зам. Вождя</option>
+                    <option value="Вождь">Вождь</option>
+                    <option value="Мастер">Мастер</option>
+                    <option value="Модератор">Модератор</option>
+                    <option value="Сеньор Модератор">Сеньор Модератор</option>
+                    <option value="Деп. Админ">Деп. Админ</option>
+                    <option value="Админ">Админ</option>
+                </select>
+                <div style="display: flex; gap: 5px;">
+                    <button onclick="changeBalance(true)" style="flex:1">ВЫДАТЬ TRC</button>
+                    <button onclick="setRole()" style="background: var(--gray); color: white; flex:1">SET ROLE</button>
+                </div>
+                <button onclick="admKick()" style="background: var(--red); color: white; width: 100%; margin-top: 10px;">KICK PLAYER</button>
+            </div>
+            <div>
+                <h3>MARKET CONTROL</h3>
+                <select id="fruitList"></select>
+                <input type="number" id="admQty" value="1">
+                <button onclick="updateStock()" style="width: 100%;">ADD TO STOCK</button>
+                <button onclick="toggleShop()" id="tsBtn" style="width: 100%; margin-top: 10px; background: #444; color: white;">TOGGLE SHOP</button>
+            </div>
+        </div>
+        <h3 style="margin-top:20px">📩 REQUESTS</h3>
+        <div id="admReqs"></div>
+        <h3>📜 LOGS</h3>
+        <div id="logBox"></div>
+    </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDSotXIeWIPZmohcUkjEQph1sc8pfaFvHE",
+  authDomain: "clantrc-62099.firebaseapp.com",
+  databaseURL: "https://clantrc-62099-default-rtdb.firebaseio.com",
+  projectId: "clantrc-62099",
+  storageBucket: "clantrc-62099.firebasestorage.app",
+  messagingSenderId: "1056897976845",
+  appId: "1:1056897976845:web:2f241821484ec71162a344"
+};
+
+firebase.initializeApp(firebaseConfig);
+const rdb = firebase.database();
+
+const PRICES = {"Rocket": 50, "Spin": 50, "Blade": 50, "Spring": 50, "Bomb": 50, "Smoke": 75, "Spike": 75, "Flame": 75, "Ice": 75, "Sand": 75, "Dark": 75, "Eagle": 75, "Diamond": 100, "Light": 100, "Rubber": 100, "Ghost": 100, "Magma": 100, "Quake": 150, "Love": 300, "Creation": 300, "Spider": 300, "Sound": 300, "Phoenix": 300, "Portal": 450, "Lightning": 850, "Pain": 400, "Blizzard": 415, "Gravity": 425, "Mammoth": 425, "T-Rex": 425, "Dough": 675, "Shadow": 400, "Buddha": 450, "Venom": 400, "Gas": 775, "Spirit": 450, "Kitsune": 2660, "Control": 850, "Dragon": 8000};
+
+let myNick = localStorage.getItem('trc_nick') || "";
+let globalData = {};
+
+function auth() {
+    const nick = document.getElementById('logNick').value.trim();
+    const pass = document.getElementById('logPass').value;
+    if(!nick || !pass) return alert("Заполни поля!");
+
+    rdb.ref('users/' + nick).once('value', s => {
+        const u = s.val();
+        if(!u) {
+            rdb.ref('users/' + nick).set({ pass, bal: 500, role: "Участник" });
+            loginSuccess(nick);
+        } else if(u.pass === pass) {
+            loginSuccess(nick);
+        } else { alert("Wrong password!"); }
+    });
+}
+
+function loginSuccess(nick) {
+    myNick = nick;
+    localStorage.setItem('trc_nick', nick);
+    document.getElementById('authScreen').style.display = 'none';
+    if(nick === "Owner_Admin") document.getElementById('admLink').style.display = 'block';
+    
+    const fl = document.getElementById('fruitList');
+    fl.innerHTML = "";
+    Object.keys(PRICES).forEach(p => fl.innerHTML += `<option value="${p}">${p}</option>`);
+
+    rdb.ref().on('value', s => {
+        globalData = s.val() || {};
+        render();
+    });
+}
+
+function render() {
+    if(!myNick) return;
+    const me = globalData.users?.[myNick] || {};
+    
+    document.getElementById('uName').innerText = myNick;
+    document.getElementById('uBal').innerText = (me.bal || 0).toLocaleString();
+    document.getElementById('uRole').innerText = me.role || "Участник";
+    document.getElementById('uAvatar').src = `https://robohash.org/${myNick}.png?set=set4&bgset=bg1`;
+
+    const invDiv = document.getElementById('uInv');
+    invDiv.innerHTML = "";
+    if(me.inv) {
+        Object.entries(me.inv).forEach(([id, item]) => {
+            invDiv.innerHTML += `<div class="inv-item"><span>${item.name}</span> <button onclick="withdraw('${id}','${item.name}')">USE</button></div>`;
+        });
+    }
+
+    const isReady = globalData.shopOpen && Date.now() < globalData.shopExpire;
+    document.getElementById('shStatus').innerText = isReady ? "🛒 MARKET OPEN" : "🔒 MARKET CLOSED";
+    const grid = document.getElementById('shGrid');
+    grid.innerHTML = "";
+    if(isReady && globalData.stock) {
+        Object.entries(globalData.stock).forEach(([n, q]) => {
+            if(q > 0) grid.innerHTML += `<div style="background:#111; padding:10px; border-radius:10px; text-align:center; border:1px solid #222;"><b>${n}</b><br><small style="color:var(--gold)">${PRICES[n]} TRC</small><br><button onclick="buy('${n}')" style="font-size:10px; padding:5px; margin-top:5px; width:100%">BUY</button></div>`;
+        });
+    }
+
+    const topDiv = document.getElementById('topList');
+    topDiv.innerHTML = "";
+    Object.entries(globalData.users || {}).sort((a,b) => b[1].bal - a[1].bal).slice(0, 10).forEach(([n, d], i) => {
+        topDiv.innerHTML += `<div class="staff-card"><span>#${i+1} <b>${n}</b> <br><small>${d.role || 'Участник'}</small></span> <b>${d.bal}</b></div>`;
+    });
+
+    const staffDiv = document.getElementById('staffList');
+    staffDiv.innerHTML = "";
+    const staffRoles = ["Тренер", "Аналитик", "Секретарь", "Хелпер", "Мастер", "Модератор", "Сеньор Модератор", "Деп. Админ", "Админ", "Зам. Вождя", "Вождь"];
+    
+    Object.entries(globalData.users || {}).forEach(([n, d]) => {
+        if(staffRoles.includes(d.role)) {
+            let sum = 0, count = 0;
+            if(d.ratings) { Object.values(d.ratings).forEach(v => { sum += v; count++; }); }
+            let avg = count > 0 ? (sum / count).toFixed(1) : "0.0";
+            staffDiv.innerHTML += `
+                <div class="staff-card">
+                    <div>
+                        <img src="https://robohash.org/${n}.png?set=set4" style="width:30px; vertical-align:middle; border-radius:5px; margin-right:10px; border:1px solid var(--gold)">
+                        <b>${n}</b> <span class="role-badge" style="background:var(--gold); color:black">${d.role}</span>
+                    </div>
+                    <div>
+                        <span class="stars" onclick="vote('${n}')">⭐ RATE</span>
+                        <span class="rating-val">${avg}</span>
+                    </div>
+                </div>`;
+        }
+    });
+
+    if(myNick === "Owner_Admin") {
+        document.getElementById('admReqs').innerHTML = (globalData.requests || []).map((r, i) => `
+            <div class="inv-item"><span>${r.u}: ${r.item}</span> <button onclick="closeReq(${i})">OK</button></div>
+        `).join('');
+        document.getElementById('logBox').innerHTML = (globalData.logs || []).map(l => `<div>${l}</div>`).reverse().join('');
+    }
+}
+
+function vote(target) {
+    if(target === myNick) return alert("Нельзя оценивать самого себя!");
+    const score = parseInt(prompt("Оцените эффективность (1-5):", "5"));
+    if(score >= 1 && score <= 5) {
+        rdb.ref(`users/${target}/ratings/${myNick}`).set(score);
+        alert("Оценка сохранена!");
+    }
+}
+
+function setRole() {
+    const t = document.getElementById('admTo').value.trim();
+    const r = document.getElementById('admRole').value;
+    if(globalData.users[t]) {
+        rdb.ref(`users/${t}/role`).set(r);
+        addLog(`Изменена роль ${t} на ${r}`);
+    } else { alert("User not found!"); }
+}
+
+function buy(name) {
+    const me = globalData.users[myNick];
+    if(me.bal >= PRICES[name] && globalData.stock[name] > 0) {
+        rdb.ref('users/'+myNick+'/bal').set(me.bal - PRICES[name]);
+        rdb.ref('stock/'+name).set(globalData.stock[name] - 1);
+        rdb.ref('users/'+myNick+'/inv').push({ name, expire: Date.now() + 259200000 });
+        addLog(`${myNick} купил ${name}`);
+    }
+}
+
+function withdraw(id, name) {
+    rdb.ref('users/'+myNick+'/inv/'+id).remove();
+    const reqs = globalData.requests || [];
+    reqs.push({ u: myNick, item: name });
+    rdb.ref('requests').set(reqs);
+    alert("Request sent to Admin!");
+}
+
+function changeBalance(plus) {
+    const t = document.getElementById('admTo').value.trim();
+    const v = parseInt(document.getElementById('admVal').value);
+    if(globalData.users[t] && v) {
+        const cur = globalData.users[t].bal || 0;
+        rdb.ref(`users/${t}/bal`).set(plus ? cur + v : cur - v);
+        addLog(`Баланс ${t} изменен на ${v}`);
+    }
+}
+
+function updateStock() {
+    const f = document.getElementById('fruitList').value;
+    const q = parseInt(document.getElementById('admQty').value);
+    rdb.ref('stock/'+f).set((globalData.stock?.[f] || 0) + q);
+}
+
+function toggleShop() {
+    const isOpen = globalData.shopOpen && Date.now() < globalData.shopExpire;
+    rdb.ref('shopOpen').set(!isOpen);
+    rdb.ref('shopExpire').set(isOpen ? 0 : Date.now() + 86400000);
+}
+
+function closeReq(i) {
+    const r = [...(globalData.requests || [])]; r.splice(i,1);
+    rdb.ref('requests').set(r);
+}
+
+function addLog(m) {
+    const l = globalData.logs || [];
+    l.push(new Date().toLocaleTimeString() + ": " + m);
+    if(l.length > 50) l.shift();
+    rdb.ref('logs').set(l);
+}
+
+function showTab(id) {
+    document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+function logout() { localStorage.removeItem('trc_nick'); location.reload(); }
+
+function admKick() {
+    const target = document.getElementById('admTo').value.trim();
+    if(target && confirm(`Удалить ${target}?`)) rdb.ref('users/'+target).remove();
+}
+
+if(myNick) loginSuccess(myNick);
+</script>
+</body>
+</html>
